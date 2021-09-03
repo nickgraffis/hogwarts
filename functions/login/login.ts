@@ -4,10 +4,6 @@ import { Call, Client, Index, Login, Match, Time } from 'faunadb';
 const { FAUNADB: secret } = process.env;
 import safeAwait from '../../safeAwait';
 
-const getRandomInt = (max: number): number => {
-  return Math.floor(Math.random() * max);
-}
-
 const handler: Handler = async (event, context) => {
   if (event.httpMethod !== 'POST') return {
     statusCode: 403,
@@ -25,13 +21,6 @@ const handler: Handler = async (event, context) => {
   }
 
   const client = new Client({ secret })
-
-  //Display the date 1 hour from now
-  const oneHourFromNow = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    return now.toISOString();
-  }
 
   const { wand, password } = JSON.parse(event.body)
 

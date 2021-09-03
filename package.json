@@ -13,9 +13,11 @@
     "concurrently": "^6.0.2",
     "faunadb": "^4.4.0",
     "react": "^17.0.0",
-    "react-dom": "^17.0.0"
+    "react-dom": "^17.0.0",
+    "react-query": "^3.21.1"
   },
   "devDependencies": {
+    "@iconify/react": "^3.0.1",
     "@netlify/functions": "^0.7.2",
     "@types/node": "^15.0.3",
     "@types/react": "^17.0.5",

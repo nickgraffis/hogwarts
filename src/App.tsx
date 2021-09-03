@@ -1,78 +1,44 @@
-import { Client, Map, Paginate, Match, Index, Lambda, Get, Var, CurrentIdentity, CurrentToken, Collection, Ref } from 'faunadb'
-import React, { FC, useState } from 'react'
-import { useEffect } from 'react'
-import safeAwait from '../safeAwait'
+import { QueryClient, QueryClientProvider } from 'react-query'
+import React, { FC } from 'react'
+import { Header } from './components/Header';
+import { Houses } from './components/Houses';
+import { MessageBoard } from './components/MessageBoard';
+import { UserCard } from './components/UserCard';
+import { Data } from './components/Data';
+import { useToken } from './queries/Tokens';
 
 type Props = { }
 
+const queryClient = new QueryClient()
+
+const HogwartsChat: FC<{}> = () => {
+  return (
+    <div className="h-screen flex flex-col">
+      <Header />
+      <div className="grid grid-cols-12 gap-4 flex-grow">
+        <Houses />
+        <MessageBoard />
+        <div className="col-span-4 border-l border-blueGray-300 p-6 space-y-8">
+          <UserCard />
+          <Data />
+          {/* Notes */}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const App: FC<Props> = () => {
-  const [key, setKey] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [conversations, setConversations] = useState<string[]>([])
-
-  useEffect(() => {
-    fetch('/api/hello-world', {
-      method: 'POST',
-      body: JSON.stringify({
-        wand: "holly-phoenix",
-        password: "harrypotter"
-      })
-    })
-    .then(res => {
-      if (!res.ok) {
-        console.log(res)
-        throw Error(res);
-      }
-      return res;
-    })
-    .then(res => res.json())
-    .then(res => {
-      console.log(res)
-      setKey(res.tokens.access.secret)
-      console.log(res.tokens.access.secret)
-    })
-    .catch(err => {
-      console.log(err)
-      setError(err.toString())
-    })
-  }, [])
-
-  const fetchConversations = async (key: string) => {
-    const client = new Client({
-      secret: key
-    })
-    const [error, data] = await safeAwait(
-      client.query(
-        Map(
-          Paginate(
-            Match(Index("all_conversations"))
-          ), 
-          Lambda(
-            'conversation', Get(Var('conversation'))
-          )
-        )
-      )
-    )
-
-    if (error) console.log(error)
-    if (data) setConversations(data.data.map((c: any) => c.data.message))
-    console.log(data)
-  }
-
-  useEffect(() => {
-    key && fetchConversations(key)
-  }, [key])
+  // On initial load, we can go get a fresh token. 
+  // If we have a stored refresh token that hasn't expired, we'll just 
+  // log the user in with that. Otherwise it will return a public token.
+  const { isLoading, error, isError, isSuccess, data } = useToken()
 
   return (
-    <div className="text-center">
-      { key ? 
-        <p className="font-bold text-xl">{ key }</p> :
-        <p className="font-bold text-xl">{ 'Not Logged In' }</p>
-      }
-      { error && <p className="font-bold text-red-400 text-xl">{ error }</p> }
-      <ul>
-        { conversations.map(conversation => <li key={ conversation }>{ conversation }</li>) }
-      </ul>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      { isLoading && <div>Loading...</div> }
+      { (isError && error) && <div>Error: {error.message}</div> }
+      { (isSuccess && data) && <HogwartsChat /> }
+    </QueryClientProvider>
   )
 }
