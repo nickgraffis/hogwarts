@@ -1,6 +1,5 @@
-// Docs on event and context https://www.netlify.com/docs/functions/#the-handler-method
 import { Handler } from '@netlify/functions';
-import { Call, Client, Index, Login, Match, Time } from 'faunadb';
+import { Call, Client } from 'faunadb';
 const { FAUNADB: secret } = process.env;
 import safeAwait from '../../safeAwait';
 

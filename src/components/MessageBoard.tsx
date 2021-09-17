@@ -1,60 +1,81 @@
 import { Icon } from "@iconify/react"
-import React, { FC, useState } from "react"
-import { House } from "./Houses"
-import { Student } from "./UserCard"
-
-export type Message = {
-  ref: {
-    value: {
-      id: string
-    }
-  }
-  data: {
-    student: Student,
-    house: House,
-    message: string,
-  }
-}
+import React, { DetailedHTMLProps, FC, HTMLAttributes, useEffect, useRef, useState } from "react"
+import { useCreateMessageFromStream, useMessages } from "../queries/Messages"
+import { Message as MessageType } from "../types"
+import { time } from "../logics/simpleTime"
+import { houseColor } from "../logics/houseColors"
+import { useCurrentHouse } from "../App"
+import { CommonRoomHeader } from "./CommonRoomHeader"
+import { Message } from "./Message"
+import faunadb, { Collection, Expr, Ref } from "faunadb"
+import { useToken } from "../queries/Tokens"
+import { NewMessage } from "./NewMessage"
+import FaunaStream from "../queries/FaunaStream"
+import { Loader } from "./Loader"
 
 type Props = { }
 
 export const MessageBoard: FC<Props> = () => {
-  const [messages, setMessages] = useState<Message[] | null>(null)
+  // The current house, accsessed with the useCurrentHouse hook
+  const { house, houseStream } = useCurrentHouse()
+
+  // The messages returned for a particular house
+  const { isLoading, isError, error, isSuccess, data: messages } = useMessages(house?.ref?.value.id)
+  const messagesEndRef = useRef<any>(null)
+
+  const scrollToBottom = () => {
+    // This "smooth" behavior is not working on Safari
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const newMessage = useCreateMessageFromStream(house?.ref?.value.id)
+
+  useEffect(() => {
+    if (houseStream)
+      houseStream.onUpdate.add((signal: any) => {
+        if (signal.event === "new message") {
+          console.log(signal)
+          newMessage.mutate(signal.data)
+        }
+      })
+  }, [houseStream])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages]); 
 
   return (
-    <div className="col-span-6 p-4">
-      <div className="flex flex-col h-full">
-        <div className="flex-grow overflow-scroll">
-          <div className="text-xl font-bold flex items-center space-x-4 pb-8 pt-4">
-            <Icon icon="emojione:lion-face" className="text-3xl" />
-            <p>Gryffidor Common Room</p>
+    <div className="w-6/12 flex flex-col h-full">
+      <CommonRoomHeader houseName={house?.data?.name} />
+        {(isError && error) && 
+        <div className="flex-grow w-full px-4 flex items-center justify-center h-full">
+          <pre className="bg-blueGray-800 text-rose-400 w-full overflow-scroll rounded-lg p-4 h-56">
+            <pre className="text-blueGray-500">
+              // Maybe we don't want to actually show the error message <br/>
+              // but instead show a "Login to see this commoon room", or <br/>
+              // "You must be in Gryffindor to see this common room". <br/>
+              // This is here though, to prove that you cannot access these messages <br/>
+            </pre>
+            Error: {error.message}
+          </pre>
+        </div>
+        }
+        {
+          isLoading && 
+          <div className="flex-grow w-full flex items-center justify-center h-full">
+            <Loader />
           </div>
-          { messages.map((message: Message) => 
-            <div key={message.ref.value.id} className="flex space-x-4">
-              <div className="w-8 h-8 bg-red-600 flex-shrink-0 text-red-100 rounded-full flex items-center justify-center text-xs font-semibold">
-                HP
-              </div>
-              <div className="space-y-6 flex-grow">
-                <div className="w-full flex justify-between items-center">
-                  <div className="flex space-x-4 items-start">
-                    <p className="font-semibold text-sm">Harry Potter</p>
-                    <div className="px-2 py-1 text-[10px] bg-blueGray-300 text-blueGray-500 font-bold rounded-md">PUBLIC</div>
-                    <div className="px-2 py-1 text-[10px] bg-red-300 text-red-800 font-bold rounded-md">Gryffindor</div>
-                  </div>
-                  <p className="text-blueGray-600 text-xs">14:24 pm (edited)</p>
-                </div>
-                <p>
-                  { message.data.message }            
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex py-4 items-center">
-          <input className="focus:outline-none foucs:border-blueGray-800 flex-grow apperance-none px-5 py-2 border-2 border-blueGray-300 rounded-md" placeholder="Winguardian Leviosa..." />
-          <div className="px-4 py-2 bg-blue-600 text-blue-100 font-bold mx-4 rounded-md border-2 border-blue-600">Post</div>
-        </div>
-      </div>
+        }
+        {
+          (isSuccess && messages) && <div 
+          className="overflow-scroll flex-grow px-4 space-y-4">
+            {messages.map((message: MessageType) => 
+              <Message message={message} key={message.ref.value.id} />
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        }
+      <NewMessage />
     </div>
   )
 }

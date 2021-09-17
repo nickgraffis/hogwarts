@@ -1,4 +1,3 @@
-// Docs on event and context https://www.netlify.com/docs/functions/#the-handler-method
 import { Handler } from '@netlify/functions';
 import { Call, Client } from 'faunadb';
 const { FAUNADB: secret } = process.env;
@@ -17,7 +16,7 @@ const handler: Handler = async (event, context) => {
 
   const client = new Client({ secret })
 
-  const [error, token] = await safeAwait(
+  const [error, _] = await safeAwait(
     client.query(
       Call("LogoutAccount")
     )
